@@ -1,0 +1,18 @@
+# TDMH Pro Audit v6 🎤
+
+A hands-free medical inventory system.
+
+## 📁 Repository Structure
+- `index.html`: Contains all HTML, CSS (Style), and JavaScript (Script) in one file to prevent 404 errors.
+
+## 🚀 Deployment Guide
+
+1. Upload `index.html` to the main branch of your GitHub repository.
+2. Go to **Settings > Pages**.
+3. Under **Build and deployment**, set **Branch** to `main`.
+4. Click **Save**. 
+5. Wait for the link (e.g., `https://username.github.io/repo/`) to appear.
+
+## 📱 Browser Requirement
+- **Mobile**: Use Google Chrome on Android. (iOS Chrome does not support Speech Recognition).
+- **Desktop**: Use Google Chrome or Microsoft Edge.

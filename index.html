@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TDMH | Pro Audit v6</title>
+    <style>
+        :root { --neon: #00f2ff; --bg: #0a0a0c; --success: #2ecc71; --danger: #e74c3c; --warning: #f1c40f; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
+        .top-bar { background: #000; padding: 10px; border-bottom: 2px solid var(--neon); text-align: center; height: 40px; }
+        #live-view { font-size: 18px; color: var(--warning); font-weight: bold; text-transform: uppercase; }
+        .active-item { background: #111118; padding: 20px 10px; border-bottom: 3px solid var(--neon); text-align: center; }
+        .drug-title { font-size: 28px; font-weight: 900; margin: 5px 0; text-transform: uppercase; line-height: 1.2; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; background: #222; margin-top: 5px; }
+        .list-wrap { height: calc(100vh - 240px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th { position: sticky; top: 0; background: #111; font-size: 10px; color: #666; padding: 10px; z-index: 5; }
+        td { padding: 12px 5px; border-bottom: 1px solid #1a1a1a; font-size: 14px; text-align: center; }
+        .row-focus { background: rgba(0, 242, 255, 0.15); outline: 1px solid var(--neon); }
+        .qty-input, .exp-input { background: #000; color: var(--neon); border: 1px solid #333; padding: 5px; border-radius: 4px; text-align: center; }
+        .qty-input { width: 40px; font-weight: bold; }
+        .exp-input { width: 70px; font-size: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .fab-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .btn { width: 70px; height: 70px; border-radius: 50%; background: var(--success); border: none; font-size: 28px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn.on { background: var(--danger); animation: pulse 1.5s infinite; }
+        .mini-btn { width: 50px; height: 50px; border-radius: 50%; background: #34495e; border: none; font-size: 20px; color: white; display: flex; align-items: center; justify-content: center; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+    </style>
+</head>
+<body>
+    <div class="top-bar"><div id="live-view">READY</div></div>
+    <div class="active-item">
+        <div id="p-count" style="color:var(--neon); font-size:12px; letter-spacing: 1px;">ITEM 1 / 71</div>
+        <div id="p-name" class="drug-title">TAP MICROPHONE</div>
+        <div id="p-status" class="status-badge">AWAITING START</div>
+    </div>
+    <div class="list-wrap">
+        <table>
+            <thead><tr><th>Item</th><th>Req</th><th>Act</th><th>Exp</th><th>St</th></tr></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+    <div class="fab-container">
+        <button id="export-btn" class="mini-btn" onclick="saveToSheet()">💾</button>
+        <button id="main-btn" class="btn" onclick="init()">🎤</button>
+    </div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_8o2FlMzny4XUhwcs-oCI8Wnfsyzs3RvvuiTytO8uVGMmqI2AvS9Sy_PeTZ6JBmZt/exec";
+
+    const drugs = [
+        {n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5},
+        {n:"Diazepam 10mg", s:2}, {n:"Midazolam", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2},
+        {n:"Digoxin 0.5mg", s:2}, {n:"Diphenhydramine", s:2}, {n:"Dobutamine", s:2}, {n:"Dopamine", s:2}, {n:"Epinephrine 1mg", s:20}, {n:"Furosemide 20mg", s:4},
+        {n:"Haloperidol", s:1}, {n:"Hydrocortisone", s:2}, {n:"Lidocaine Spray", s:1}, {n:"Lidocaine Sol", s:4}, {n:"Magnesium Sulfate", s:1}, {n:"Mannitol 20%", s:1},
+        {n:"Methylprednisolone", s:1}, {n:"Metoclopramide", s:1}, {n:"Morphine (H.A)", s:1}, {n:"Nitroglycerin", s:2}, {n:"Noradrenaline", s:4}, {n:"Paracetamol IV", s:3},
+        {n:"Phenobarbital", s:1}, {n:"Phenytoin", s:1}, {n:"Plain LRS 1L", s:1}, {n:"Plain NSS 1L", s:1}, {n:"Potassium Chloride", s:2}, {n:"Sodium Bicarb", s:4},
+        {n:"Verapamil 5mg", s:1}, {n:"Vitamin B Complex", s:1}, {n:"Insulin syringe", s:10}, {n:"1cc Syringe", s:10}, {n:"3cc Syringe", s:10}, {n:"5cc Syringe", s:10},
+        {n:"10cc Syringe", s:10}, {n:"20cc Syringe", s:5}, {n:"30cc Syringe", s:2}, {n:"50cc Syringe", s:2}, {n:"Airway Adjuncts", s:1}, {n:"Airway Kit", s:1},
+        {n:"Alcohol", s:1}, {n:"Aseptic bulb", s:1}, {n:"Calculator", s:1}, {n:"CBG Kit", s:1}, {n:"Cardiac Board", s:1}, {n:"ET Tube 2.5", s:1},
+        {n:"ET Tube 3.0", s:1}, {n:"ET Tube 3.5", s:1}, {n:"ET Tube 4.0", s:1}, {n:"ET Tube 4.5", s:1}, {n:"ET Tube 5.0", s:1}, {n:"ET Tube 5.5", s:1},
+        {n:"ET Tube 6.0", s:1}, {n:"ET Tube 6.5", s:1}, {n:"ET Tube 7.0", s:1}, {n:"ET Tube 7.5", s:1}, {n:"ET Tube 8.0", s:1}, {n:"ET Tube 8.5", s:1},
+        {n:"Foley FR.14", s:1}, {n:"Foley FR.16", s:1}, {n:"Foley FR.18", s:1}, {n:"Urine Bag", s:2}, {n:"Waterproof Apron", s:2}
+    ];
+
+    let idx = 0, isRunning = false, isWaitingForExp = false, rec, synth = window.speechSynthesis;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        if(type === 'success') {
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'done') {
+            [440, 554, 659, 880].forEach((f, i) => {
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.frequency.value = f; g.gain.setValueAtTime(0.1, audioCtx.currentTime + (i*0.1));
+                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (i*0.1) + 0.3);
+                o.start(audioCtx.currentTime + (i*0.1)); o.stop(audioCtx.currentTime + (i*0.1) + 0.3);
+            });
+        }
+    }
+
+    const tb = document.getElementById('table-body');
+    drugs.forEach((d, i) => {
+        let r = document.createElement('tr'); r.id = `row-${i}`;
+        r.innerHTML = `<td style="text-align:left"><b>${d.n}</b></td><td>${d.s}</td>
+        <td><input type="number" class="qty-input" id="q-${i}" value="${d.s}"></td>
+        <td><input type="text" class="exp-input" id="e-${i}" placeholder="..."></td>
+        <td id="s-${i}"><span class="status-dot" style="background:#444"></span></td>`;
+        tb.appendChild(r);
+    });
+
+    function updateStatus(i, val) {
+        const target = drugs[i].s;
+        const dot = document.getElementById(`s-${i}`);
+        const badge = document.getElementById('p-status');
+        let color = val == target ? '#2ecc71' : (val < target ? '#e74c3c' : '#f1c40f');
+        dot.innerHTML = `<span class="status-dot" style="background:${color}"></span>`;
+        badge.innerText = val == target ? "MATCHED" : (val < target ? "SHORTAGE" : "OVERSTOCK");
+        badge.style.background = color;
+    }
+
+    function init() {
+        if(isRunning) { location.reload(); return; }
+        isRunning = true; document.getElementById('main-btn').classList.add('on');
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if(!window.SpeechRecognition) return alert("Please use Chrome on Mobile/Desktop");
+
+        rec = new SpeechRecognition(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
+
+        rec.onresult = (e) => {
+            let stream = e.results[e.results.length-1][0].transcript.toLowerCase();
+            document.getElementById('live-view').innerText = stream;
+            
+            if (isWaitingForExp) {
+                const months = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+                let foundMonth = months.find(m => stream.includes(m));
+                let foundYear = stream.match(/\d{2,4}/);
+                if (foundMonth || foundYear || stream.includes("skip") || stream.includes("none")) {
+                    let mIdx = foundMonth ? months.indexOf(foundMonth) + 1 : "";
+                    let displayDate = foundMonth ? `${mIdx}/${foundYear ? foundYear[0].slice(-2) : '??'}` : "N/A";
+                    document.getElementById(`e-${idx}`).value = displayDate;
+                    isWaitingForExp = false; idx++; rec.abort(); playSound('success'); speak();
+                }
+                return;
+            }
+
+            const dict = {'none':0,'zero':0,'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10};
+            let match = null;
+            stream.split(" ").forEach(w => { if(dict[w] !== undefined) match = dict[w]; });
+            if(match === null) { let d = stream.match(/\d+/); if(d) match = d[0]; }
+            if(match !== null) {
+                document.getElementById(`q-${idx}`).value = match;
+                updateStatus(idx, match); isWaitingForExp = true; rec.abort(); askExpiry();
+            }
+        };
+        rec.onend = () => { if(isRunning && idx < drugs.length) rec.start(); };
+        rec.start(); speak();
+    }
+
+    function askExpiry() {
+        const u = new SpeechSynthesisUtterance("Expiry?");
+        u.onend = () => rec.start();
+        synth.speak(u);
+    }
+
+    function speak() {
+        if(idx >= drugs.length) { 
+            document.getElementById('live-view').innerText = "DONE"; 
+            playSound('done'); 
+            return; 
+        }
+        const it = drugs[idx];
+        document.getElementById('p-name').innerText = it.n;
+        document.getElementById('p-count').innerText = `ITEM ${idx+1} / ${drugs.length}`;
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('row-focus'));
+        const active = document.getElementById(`row-${idx}`);
+        active.classList.add('row-focus'); active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const u = new SpeechSynthesisUtterance(it.n); u.onstart = () => rec.abort(); u.onend = () => rec.start();
+        synth.speak(u);
+    }
+
+    async function saveToSheet() {
+        const btn = document.getElementById('export-btn');
+        btn.innerText = "⏳";
+        const data = drugs.map((d, i) => ({
+            n: d.n, s: d.s, 
+            actual: document.getElementById(`q-${i}`).value,
+            exp: document.getElementById(`e-${i}`).value,
+            status: document.getElementById(`q-${i}`).value == d.s ? "OK" : "DISCREPANCY"
+        }));
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+            alert("✅ Data Saved to Google Sheet!");
+        } catch (e) { alert("❌ Network Error!"); }
+        btn.innerText = "💾";
+    }
+</script>
+</body>
+</html>
