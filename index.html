@@ -3,42 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TDMH | Full Inventory Audit</title>
+    <title>TDMH | Audit v9</title>
     <style>
-        :root { --hosp-blue: #1a73e8; --hosp-bg: #f8f9fa; --success: #1e8e3e; --danger: #d93025; --accent: #ff9800; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--hosp-bg); margin: 0; overflow: hidden; }
-        nav { background: white; border-bottom: 2px solid #ddd; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .voice-monitor { background: white; margin: 10px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-        #current-item { font-size: 22px; font-weight: 800; color: var(--hosp-blue); text-transform: uppercase; }
-        #live-transcript { font-size: 16px; color: var(--accent); min-height: 20px; font-style: italic; margin-top: 5px; }
-        .list-viewport { height: calc(100vh - 220px); overflow-y: auto; padding: 0 10px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
-        th { font-size: 10px; text-transform: uppercase; color: #70757a; padding: 5px; }
-        td { background: white; padding: 12px 8px; text-align: center; font-size: 13px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-        td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; text-align: left; width: 45%; }
+        :root { --hosp-blue: #1a73e8; --hosp-bg: #f1f3f4; --success: #1e8e3e; --danger: #d93025; --accent: #ff9800; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--hosp-bg); margin: 0; overflow: hidden; }
+        
+        /* Hospital Header */
+        nav { background: white; border-bottom: 2px solid #ddd; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; }
+        .nav-top { display: flex; justify-content: space-between; align-items: center; }
+        #search-bar { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; outline: none; }
+        #search-bar:focus { border-color: var(--hosp-blue); box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+
+        /* Voice Panel */
+        .voice-monitor { background: white; margin: 10px; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 5px solid var(--hosp-blue); }
+        #current-item { font-size: 20px; font-weight: 800; color: var(--hosp-blue); text-transform: uppercase; }
+        #live-transcript { font-size: 15px; color: var(--accent); min-height: 20px; font-style: italic; margin-top: 5px; }
+
+        /* Table View */
+        .list-viewport { height: calc(100vh - 280px); overflow-y: auto; padding: 0 10px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        th { font-size: 10px; text-transform: uppercase; color: #5f6368; padding: 8px; position: sticky; top: 0; background: var(--hosp-bg); z-index: 10; }
+        td { background: white; padding: 10px; text-align: center; font-size: 13px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; text-align: left; width: 40%; font-weight: 600; }
         td:last-child { border-right: 1px solid #eee; border-radius: 0 8px 8px 0; }
-        .row-focus td { background: #e8f0fe !important; border-color: var(--hosp-blue); }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; background: #ddd; }
-        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 4px; text-align: center; width: 40px; font-size: 12px; }
-        .fab-group { position: fixed; bottom: 25px; right: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .fab { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; box-shadow: 0 8px 15px rgba(0,0,0,0.2); font-size: 22px; cursor: pointer; }
+        
+        /* States */
+        .row-focus td { background: #e8f0fe !important; border-color: var(--hosp-blue); transform: scale(1.01); }
+        .flash-capture { animation: flash 0.5s; }
+        @keyframes flash { from { background: var(--hosp-blue); color: white; } to { background: white; } }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; background: #ddd; border: 1px solid rgba(0,0,0,0.1); }
+        
+        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 5px; text-align: center; width: 45px; font-size: 13px; }
+        .fab-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .fab { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.25); font-size: 22px; cursor: pointer; }
         #mic-btn { background: var(--hosp-blue); }
-        #mic-btn.listening { background: var(--danger); animation: pulse 1.5s infinite; }
-        #save-btn { background: var(--success); }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        #mic-btn.listening { background: var(--danger); animation: breathe 1.5s infinite; }
+        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<nav><div style="font-weight:bold; color:var(--hosp-blue)">TDMH v7</div><div id="audit-progress" style="font-size:11px">READY</div></nav>
-<div class="voice-monitor"><div id="current-item">Tap Mic to Start</div><div id="live-transcript">... waiting ...</div></div>
-<div class="list-viewport"><table><thead><tr><th>Medicine</th><th>Req.</th><th>Act.</th><th>Exp.</th><th>St</th></tr></thead><tbody id="audit-body"></tbody></table></div>
-<div class="fab-group"><button id="save-btn" class="fab" onclick="syncData()">💾</button><button id="mic-btn" class="fab" onclick="toggleVoice()">🎤</button></div>
+<nav>
+    <div class="nav-top">
+        <div style="font-weight:bold; color:var(--hosp-blue)">TDMH PRO v9</div>
+        <div id="audit-progress" style="font-size:12px; font-weight: 600;">0 / 71</div>
+    </div>
+    <input type="text" id="search-bar" placeholder="🔍 Search medicine..." onkeyup="filterList()">
+</nav>
+
+<div class="voice-monitor">
+    <div id="current-item">STANDBY</div>
+    <div id="live-transcript">Tap Microphone to begin voice audit</div>
+</div>
+
+<div class="list-viewport">
+    <table>
+        <thead><tr><th>Medicine</th><th>Req</th><th>Act</th><th>Expiry</th><th>St</th></tr></thead>
+        <tbody id="audit-body"></tbody>
+    </table>
+</div>
+
+<div class="fab-group">
+    <button id="save-btn" class="fab" style="background:var(--success)" onclick="syncData()">💾</button>
+    <button id="mic-btn" class="fab" onclick="toggleVoice()">🎤</button>
+</div>
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_8o2FlMzny4XUhwcs-oCI8Wnfsyzs3RvvuiTytO8uVGMmqI2AvS9Sy_PeTZ6JBmZt/exec";
     
-    // FULL LIST RESTORED
     const inventory = [
         {n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5},
         {n:"Diazepam 10mg", s:2}, {n:"Midazolam 5mg", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2},
@@ -59,17 +91,25 @@
 
     inventory.forEach((item, i) => {
         const r = document.createElement('tr'); r.id = `row-${i}`;
-        r.innerHTML = `<td style="font-weight:600">${item.n}</td><td>${item.s}</td>
-        <td><input type="number" id="q-${i}" class="hosp-input" value="${item.s}"></td>
-        <td><input type="text" id="e-${i}" class="hosp-input" style="width:65px" placeholder="Date"></td>
+        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td>
+        <td><input type="number" id="q-${i}" class="hosp-input" onchange="color(${i})" value="${item.s}"></td>
+        <td><input type="text" id="e-${i}" class="hosp-input" style="width:70px" placeholder="Date"></td>
         <td id="s-${i}"><span class="dot"></span></td>`;
         tbody.appendChild(r);
     });
 
+    function filterList() {
+        const q = document.getElementById('search-bar').value.toLowerCase();
+        inventory.forEach((item, i) => {
+            document.getElementById(`row-${i}`).style.display = item.n.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+
     function toggleVoice() {
         if (state !== 'none') { location.reload(); return; }
         const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return alert("Use Chrome.");
+        if (!Speech) return alert("Please use Chrome.");
+        
         rec = new Speech(); rec.continuous = true; rec.interimResults = true;
         rec.onresult = (e) => {
             let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
@@ -81,9 +121,19 @@
     }
 
     function handle(t) {
+        if (t.includes("go back") || t.includes("undo")) {
+            if (currentIdx > 0) { currentIdx--; state = 'qty'; run(); speak("Back to " + inventory[currentIdx].n); }
+            return;
+        }
+
         if (state === 'qty') {
             const n = t.match(/\d+/);
-            if (n) { document.getElementById(`q-${currentIdx}`).value = n[0]; color(currentIdx); state = 'exp'; speak("Expiry?"); }
+            if (n) { 
+                const input = document.getElementById(`q-${currentIdx}`);
+                input.value = n[0]; 
+                input.classList.add('flash-capture'); setTimeout(()=>input.classList.remove('flash-capture'), 500);
+                color(currentIdx); state = 'exp'; speak("Expiry?"); 
+            }
         } else {
             document.getElementById(`e-${currentIdx}`).value = t; state = 'qty';
             currentIdx++; if (currentIdx < inventory.length) run(); else done();
@@ -93,7 +143,7 @@
     function run() {
         const item = inventory[currentIdx];
         document.getElementById('current-item').innerText = item.n;
-        document.getElementById('audit-progress').innerText = `${currentIdx + 1} / ${inventory.length}`;
+        document.getElementById('audit-progress').innerText = `${currentIdx + 1} / 71`;
         document.querySelectorAll('tr').forEach(r => r.classList.remove('row-focus'));
         const active = document.getElementById(`row-${currentIdx}`);
         active.classList.add('row-focus'); active.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -106,12 +156,14 @@
         document.getElementById(`s-${i}`).innerHTML = `<span class="dot" style="background:${c}"></span>`;
     }
 
-    function speak(t) { window.speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }
+    function speak(t) { 
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(t); u.rate = 1.1; window.speechSynthesis.speak(u); 
+    }
 
     function done() { 
-        rec.stop(); state = 'none'; 
-        document.getElementById('mic-btn').classList.remove('listening');
-        document.getElementById('current-item').innerText = "DONE"; speak("Audit complete."); 
+        rec.stop(); state = 'none'; document.getElementById('mic-btn').classList.remove('listening');
+        document.getElementById('current-item').innerText = "AUDIT DONE"; speak("Audit complete."); 
     }
 
     async function syncData() {
