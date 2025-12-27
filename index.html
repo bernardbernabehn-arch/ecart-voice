@@ -3,109 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TDMH Full Audit v15</title>
+    <title>TDMH Full Audit v19</title>
     <style>
-        :root { --blue: #1a73e8; --bg: #f8f9fa; --txt: #202124; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--txt); }
-        nav { background: white; padding: 10px 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; font-weight: bold; }
-        .staging { background: #000; color: #0f0; padding: 15px; margin: 10px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 1.2rem; min-height: 30px; border: 2px solid #333; }
-        .current-tag { text-align: center; color: var(--blue); font-weight: 800; font-size: 1.1rem; padding: 5px; text-transform: uppercase; }
-        .list-area { height: calc(100vh - 250px); overflow-y: auto; padding: 0 10px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
-        td { background: white; padding: 12px 8px; text-align: center; font-size: 13px; border: 1px solid #eee; }
-        td:first-child { border-radius: 6px 0 0 6px; text-align: left; width: 45%; font-weight: 600; }
-        .active-in { background: #e8f0fe !important; border: 2px solid var(--blue) !important; outline: none; }
-        .hosp-input { border: 1px solid #ccc; border-radius: 4px; padding: 6px; text-align: center; width: 55px; font-weight: bold; }
-        .btn-sync { position: fixed; bottom: 85px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #1e8e3e; color: white; border: none; font-size: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .btn-mic { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: var(--blue); color: white; border: none; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        :root { --hosp-blue: #1a73e8; --highlight: #e8f0fe; --staging-bg: #121212; }
+        body { font-family: system-ui, sans-serif; background: #f8f9fa; margin: 0; overflow: hidden; }
+        .assistant-header { background: var(--staging-bg); color: #00ff41; padding: 15px; text-align: center; border-bottom: 3px solid var(--hosp-blue); }
+        #live-box { font-family: monospace; font-size: 1.4rem; min-height: 24px; text-transform: uppercase; }
+        .mode-label { color: #888; font-size: 10px; letter-spacing: 2px; margin-bottom: 5px; }
+        .viewport { height: calc(100vh - 180px); overflow-y: auto; padding: 10px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
+        tr { transition: all 0.2s ease; }
+        td { background: white; padding: 12px 8px; border: 1px solid #eee; font-size: 13px; text-align: center; }
+        td:first-child { text-align: left; width: 45%; font-weight: 600; border-radius: 8px 0 0 8px; }
+        .row-active td { background: var(--highlight) !important; border-top: 2px solid var(--hosp-blue); border-bottom: 2px solid var(--hosp-blue); }
+        .input-active { border: 2px solid var(--hosp-blue) !important; background: #fff !important; box-shadow: 0 0 8px rgba(26,115,232,0.5); }
+        input { border: 1px solid #ccc; border-radius: 4px; padding: 6px; text-align: center; width: 60px; font-weight: bold; }
+        .mic-btn { position: fixed; bottom: 20px; right: 20px; width: 70px; height: 70px; border-radius: 50%; background: var(--hosp-blue); color: white; border: none; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 999; }
     </style>
 </head>
 <body>
 
-<nav><div>TDMH PRO v15</div><div id="prog">0 / 71</div></nav>
-<div class="staging" id="stage">READY...</div>
-<div class="current-tag" id="cur-name">TAP MIC TO START</div>
-
-<div class="list-area">
-    <table><tbody id="audit-body"></tbody></table>
+<div class="assistant-header">
+    <div class="mode-label" id="status-msg">READY FOR 71-ITEM AUDIT</div>
+    <div id="live-box">SAY "START" or TAP MIC</div>
 </div>
 
-<button class="btn-sync" onclick="syncData()">💾</button>
-<button id="mic-btn" class="btn-mic" onclick="toggleVoice()">🎤</button>
+<div class="viewport">
+    <table><tbody id="audit-table"></tbody></table>
+</div>
+
+<button id="mic-btn" class="mic-btn" onclick="startAssistant()">🎤</button>
 
 <script>
-    const inventory = [
-        {n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5},
-        {n:"Diazepam 10mg", s:2}, {n:"Midazolam 5mg", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2},
-        {n:"Digoxin 0.5mg", s:2}, {n:"Diphenhydramine", s:2}, {n:"Dobutamine", s:2}, {n:"Dopamine", s:2}, {n:"Epinephrine 1mg", s:20}, {n:"Furosemide 20mg", s:4},
-        {n:"Haloperidol", s:1}, {n:"Hydrocortisone", s:2}, {n:"Lidocaine Spray", s:1}, {n:"Lidocaine Sol", s:4}, {n:"Magnesium Sulfate", s:1}, {n:"Mannitol 20%", s:1},
-        {n:"Methylprednisolone", s:1}, {n:"Metoclopramide", s:1}, {n:"Morphine (H.A)", s:1}, {n:"Nitroglycerin", s:2}, {n:"Noradrenaline", s:4}, {n:"Paracetamol IV", s:3},
-        {n:"Phenobarbital", s:1}, {n:"Phenytoin", s:1}, {n:"Plain LRS 1L", s:1}, {n:"Plain NSS 1L", s:1}, {n:"Potassium Chloride", s:2}, {n:"Sodium Bicarb", s:4},
-        {n:"Verapamil 5mg", s:1}, {n:"Vitamin B Complex", s:1}, {n:"Insulin syringe", s:10}, {n:"1cc Syringe", s:10}, {n:"3cc Syringe", s:10}, {n:"5cc Syringe", s:10},
-        {n:"10cc Syringe", s:10}, {n:"20cc Syringe", s:5}, {n:"30cc Syringe", s:2}, {n:"50cc Syringe", s:2}, {n:"Airway Adjuncts", s:1}, {n:"Airway Kit", s:1},
-        {n:"Alcohol", s:1}, {n:"Aseptic bulb", s:1}, {n:"Calculator", s:1}, {n:"CBG Kit", s:1}, {n:"Cardiac Board", s:1}, {n:"ET Tube 2.5", s:1},
-        {n:"ET Tube 3.0", s:1}, {n:"ET Tube 3.5", s:1}, {n:"ET Tube 4.0", s:1}, {n:"ET Tube 4.5", s:1}, {n:"ET Tube 5.0", s:1}, {n:"ET Tube 5.5", s:1},
-        {n:"ET Tube 6.0", s:1}, {n:"ET Tube 6.5", s:1}, {n:"ET Tube 7.0", s:1}, {n:"ET Tube 7.5", s:1}, {n:"ET Tube 8.0", s:1}, {n:"ET Tube 8.5", s:1},
-        {n:"Foley FR.14", s:1}, {n:"Foley FR.16", s:1}, {n:"Foley FR.18", s:1}, {n:"Urine Bag", s:2}, {n:"Waterproof Apron", s:2}
-    ];
+    // FULL COMPRESSED INVENTORY (71 ITEMS)
+    const rawInv = "Adenosine 6mg|Amiodarone 150mg|Anti-tetanus serum|Aspirin 325mg|Atropine 1mg|Salbutamol Inhaler|Diazepam 10mg|Midazolam 5mg|Calcium Gluconate|Clopidogrel 75mg|D5W 250ml|D50W vial|Digoxin 0.5mg|Diphenhydramine|Dobutamine|Dopamine|Epinephrine 1mg|Furosemide 20mg|Haloperidol|Hydrocortisone|Lidocaine Spray|Lidocaine Sol|Magnesium Sulfate|Mannitol 20%|Methylprednisolone|Metoclopramide|Morphine (H.A)|Nitroglycerin|Noradrenaline|Paracetamol IV|Phenobarbital|Phenytoin|Plain LRS 1L|Plain NSS 1L|Potassium Chloride|Sodium Bicarb|Verapamil 5mg|Vitamin B Complex|Insulin syringe|1cc Syringe|3cc Syringe|5cc Syringe|10cc Syringe|20cc Syringe|30cc Syringe|50cc Syringe|Airway Adjuncts|Airway Kit|Alcohol|Aseptic bulb|Calculator|CBG Kit|Cardiac Board|ET Tube 2.5|ET Tube 3.0|ET Tube 3.5|ET Tube 4.0|ET Tube 4.5|ET Tube 5.0|ET Tube 5.5|ET Tube 6.0|ET Tube 6.5|ET Tube 7.0|ET Tube 7.5|ET Tube 8.0|ET Tube 8.5|Foley FR.14|Foley FR.16|Foley FR.18|Urine Bag|Waterproof Apron";
+    const inv = rawInv.split('|');
 
-    let currentIdx = 0, state = 'none', rec;
-    const tbody = document.getElementById('audit-body');
+    let currentIdx = 0, isQty = true, recognition;
 
-    inventory.forEach((item, i) => {
-        const r = document.createElement('tr'); r.id = `row-${i}`;
-        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td>
-        <td><input type="text" id="q-${i}" class="hosp-input" placeholder="0"></td>
-        <td><input type="text" id="e-${i}" class="hosp-input" style="width:80px" placeholder="---"></td>`;
-        tbody.appendChild(r);
+    const tableBody = document.getElementById('audit-table');
+    inv.forEach((name, i) => {
+        const tr = document.createElement('tr');
+        tr.id = `row-${i}`;
+        tr.innerHTML = `<td>${name}</td>
+            <td><input type="text" id="q-${i}" placeholder="Qty"></td>
+            <td><input type="text" id="e-${i}" placeholder="Exp"></td>`;
+        tableBody.appendChild(tr);
     });
 
-    function toggleVoice() {
-        if (state !== 'none') { location.reload(); return; }
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        rec = new Speech(); rec.continuous = true; rec.interimResults = true;
-        
-        rec.onresult = (e) => {
-            let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
-            document.getElementById('stage').innerText = tr;
+    function startAssistant() {
+        const Speech = window.webkitSpeechRecognition || window.SpeechRecognition;
+        recognition = new Speech();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+            let tr = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                tr += event.results[i][0].transcript;
+            }
+            const speech = tr.toLowerCase();
+            document.getElementById('live-box').innerText = speech;
             
-            const qIn = document.getElementById(`q-${currentIdx}`);
-            const eIn = document.getElementById(`e-${currentIdx}`);
+            // VOICE COMMANDS
+            if (speech.includes("skip")) { advanceRow(); return; }
 
-            if (state === 'qty') {
-                const n = tr.match(/\d+/);
-                if (n) qIn.value = n[0];
-            } else { eIn.value = tr; }
+            const target = isQty ? document.getElementById(`q-${currentIdx}`) : document.getElementById(`e-${currentIdx}`);
+            if (isQty) {
+                const n = speech.match(/\d+/);
+                if (n) target.value = n[0];
+            } else { target.value = speech; }
 
-            if(e.results[e.results.length-1].isFinal) {
-                if(tr.includes("back")) { currentIdx = Math.max(0, currentIdx-1); state='qty'; updateUI(); return; }
-                setTimeout(advance, 300);
+            if (event.results[event.results.length - 1].isFinal) {
+                setTimeout(nextStep, 500);
             }
         };
-        state = 'qty'; updateUI(); rec.start();
-        document.getElementById('mic-btn').style.background = 'red';
+        recognition.start();
+        document.getElementById('mic-btn').style.background = "red";
+        updateHighlight();
     }
 
-    function advance() {
-        if (state === 'qty') { state = 'exp'; } 
-        else { state = 'qty'; currentIdx++; }
-        if (currentIdx < inventory.length) updateUI(); else { document.getElementById('stage').innerText = "FINISH"; rec.stop(); }
+    function nextStep() {
+        if (isQty) { isQty = false; } else { isQty = true; currentIdx++; }
+        checkAndMove();
     }
 
-    function updateUI() {
-        const item = inventory[currentIdx];
-        document.getElementById('cur-name').innerText = item.n;
-        document.getElementById('prog').innerText = `${currentIdx + 1} / 71`;
-        document.querySelectorAll('.hosp-input').forEach(i => i.classList.remove('active-in'));
-        const activeId = state === 'qty' ? `q-${currentIdx}` : `e-${currentIdx}`;
-        const activeEl = document.getElementById(activeId);
-        activeEl.classList.add('active-in');
-        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    function advanceRow() {
+        isQty = true; currentIdx++;
+        checkAndMove();
     }
 
-    async function syncData() {
-        alert("Preparing sync for " + inventory.length + " items...");
-        // Fetch logic here...
+    function checkAndMove() {
+        if (currentIdx < inv.length) {
+            updateHighlight();
+            document.getElementById('live-box').innerText = "---";
+        } else {
+            document.getElementById('status-msg').innerText = "AUDIT FINISHED";
+            recognition.stop();
+        }
+    }
+
+    function updateHighlight() {
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('row-active'));
+        document.querySelectorAll('input').forEach(i => i.classList.remove('input-active'));
+        const row = document.getElementById(`row-${currentIdx}`);
+        const input = isQty ? document.getElementById(`q-${currentIdx}`) : document.getElementById(`e-${currentIdx}`);
+        row.classList.add('row-active');
+        input.classList.add('input-active');
+        document.getElementById('status-msg').innerText = `AUDITING: ${inv[currentIdx]}`;
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 </script>
 </body>
