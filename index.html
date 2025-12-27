@@ -3,56 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TDMH | Complete Audit v11</title>
+    <title>TDMH | Live Audit v12</title>
     <style>
         :root { --hosp-blue: #1a73e8; --hosp-bg: #f8f9fa; --success: #1e8e3e; --danger: #d93025; --accent: #ff9800; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--hosp-bg); margin: 0; overflow: hidden; }
         
-        nav { background: white; border-bottom: 2px solid #ddd; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        /* Header */
+        nav { background: white; border-bottom: 2px solid #ddd; padding: 10px 15px; display: flex; justify-content: space-between; }
         
-        /* Audio Visualizer & Warning */
-        .v-panel { background: #000; margin: 10px; border-radius: 12px; height: 80px; position: relative; border: 2px solid #444; }
+        /* Live Visualizer */
+        .v-panel { background: #000; margin: 10px; border-radius: 12px; height: 60px; position: relative; border: 2px solid #444; }
         canvas { width: 100%; height: 100%; border-radius: 10px; }
-        #vol-warn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--danger); font-weight: 900; font-size: 20px; display: none; text-shadow: 0 0 10px black; }
 
-        .info-box { text-align: center; padding: 10px; background: white; border-bottom: 1px solid #ddd; }
-        #current-item { font-size: 20px; font-weight: 800; color: var(--hosp-blue); text-transform: uppercase; }
-        #live-transcript { font-size: 14px; color: var(--accent); font-style: italic; margin-top: 4px; height: 18px; }
+        .info-box { text-align: center; padding: 15px; background: white; border-bottom: 2px solid var(--hosp-blue); }
+        #current-item { font-size: 22px; font-weight: 800; color: var(--hosp-blue); text-transform: uppercase; }
+        #live-transcript { font-size: 16px; color: var(--accent); font-weight: bold; margin-top: 5px; height: 20px; }
+        #active-mode { display: inline-block; margin-top: 5px; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
 
-        /* Table Area */
+        /* Table */
         .list-viewport { height: calc(100vh - 300px); overflow-y: auto; padding: 0 10px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
-        th { font-size: 10px; text-transform: uppercase; color: #5f6368; padding: 8px; position: sticky; top: 0; background: var(--hosp-bg); z-index: 10; }
-        td { background: white; padding: 12px 8px; text-align: center; font-size: 13px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-        td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; text-align: left; width: 45%; font-weight: 600; }
+        td { background: white; padding: 12px 8px; text-align: center; font-size: 14px; border: 1px solid #eee; }
+        td:first-child { border-radius: 8px 0 0 8px; text-align: left; width: 45%; font-weight: 600; }
+        td:last-child { border-radius: 0 8px 8px 0; }
         
-        .row-focus td { background: #e8f0fe !important; border-color: var(--hosp-blue); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 6px; text-align: center; width: 45px; font-size: 13px; }
-        
+        /* Visual Indicators */
+        .listening-qty { background: #e8f0fe !important; border: 2px solid var(--hosp-blue) !important; }
+        .listening-exp { background: #fff4e5 !important; border: 2px solid var(--accent) !important; }
+        .row-focus { transform: scale(1.02); z-index: 5; }
+
+        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 8px; text-align: center; width: 50px; font-weight: bold; font-size: 16px; transition: all 0.2s; }
         .fab-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .fab { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 24px; cursor: pointer; }
+        .fab { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 24px; }
     </style>
 </head>
 <body>
 
 <nav>
-    <div style="font-weight:bold; color:var(--hosp-blue)">TDMH PRO AUDIT</div>
+    <div style="font-weight:bold; color:var(--hosp-blue)">TDMH LIVE v12</div>
     <div id="audit-progress">0 / 71</div>
 </nav>
 
-<div class="v-panel">
-    <div id="vol-warn">SPEAK LOUDER!</div>
-    <canvas id="waveform"></canvas>
-</div>
+<div class="v-panel"><canvas id="waveform"></canvas></div>
 
 <div class="info-box">
     <div id="current-item">STANDBY</div>
-    <div id="live-transcript">Tap Microphone to begin</div>
+    <div id="live-transcript">---</div>
+    <div id="active-mode" style="background: #999;">READY</div>
 </div>
 
 <div class="list-viewport">
     <table>
-        <thead><tr><th>Medicine</th><th>Req</th><th>Act</th><th>Exp</th></tr></thead>
         <tbody id="audit-body"></tbody>
     </table>
 </div>
@@ -64,131 +65,114 @@
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_8o2FlMzny4XUhwcs-oCI8Wnfsyzs3RvvuiTytO8uVGMmqI2AvS9Sy_PeTZ6JBmZt/exec";
-    
-    // FULL 71-ITEM LIST
-    const inventory = [
-        {n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5},
-        {n:"Diazepam 10mg", s:2}, {n:"Midazolam 5mg", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2},
-        {n:"Digoxin 0.5mg", s:2}, {n:"Diphenhydramine", s:2}, {n:"Dobutamine", s:2}, {n:"Dopamine", s:2}, {n:"Epinephrine 1mg", s:20}, {n:"Furosemide 20mg", s:4},
-        {n:"Haloperidol", s:1}, {n:"Hydrocortisone", s:2}, {n:"Lidocaine Spray", s:1}, {n:"Lidocaine Sol", s:4}, {n:"Magnesium Sulfate", s:1}, {n:"Mannitol 20%", s:1},
-        {n:"Methylprednisolone", s:1}, {n:"Metoclopramide", s:1}, {n:"Morphine (H.A)", s:1}, {n:"Nitroglycerin", s:2}, {n:"Noradrenaline", s:4}, {n:"Paracetamol IV", s:3},
-        {n:"Phenobarbital", s:1}, {n:"Phenytoin", s:1}, {n:"Plain LRS 1L", s:1}, {n:"Plain NSS 1L", s:1}, {n:"Potassium Chloride", s:2}, {n:"Sodium Bicarb", s:4},
-        {n:"Verapamil 5mg", s:1}, {n:"Vitamin B Complex", s:1}, {n:"Insulin syringe", s:10}, {n:"1cc Syringe", s:10}, {n:"3cc Syringe", s:10}, {n:"5cc Syringe", s:10},
-        {n:"10cc Syringe", s:10}, {n:"20cc Syringe", s:5}, {n:"30cc Syringe", s:2}, {n:"50cc Syringe", s:2}, {n:"Airway Adjuncts", s:1}, {n:"Airway Kit", s:1},
-        {n:"Alcohol", s:1}, {n:"Aseptic bulb", s:1}, {n:"Calculator", s:1}, {n:"CBG Kit", s:1}, {n:"Cardiac Board", s:1}, {n:"ET Tube 2.5", s:1},
-        {n:"ET Tube 3.0", s:1}, {n:"ET Tube 3.5", s:1}, {n:"ET Tube 4.0", s:1}, {n:"ET Tube 4.5", s:1}, {n:"ET Tube 5.0", s:1}, {n:"ET Tube 5.5", s:1},
-        {n:"ET Tube 6.0", s:1}, {n:"ET Tube 6.5", s:1}, {n:"ET Tube 7.0", s:1}, {n:"ET Tube 7.5", s:1}, {n:"ET Tube 8.0", s:1}, {n:"ET Tube 8.5", s:1},
-        {n:"Foley FR.14", s:1}, {n:"Foley FR.16", s:1}, {n:"Foley FR.18", s:1}, {n:"Urine Bag", s:2}, {n:"Waterproof Apron", s:2}
-    ];
+    const inventory = [{n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5}, {n:"Diazepam 10mg", s:2}, {n:"Midazolam 5mg", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2}, {n:"Digoxin 0.5mg", s:2}, {n:"Diphenhydramine", s:2}, {n:"Dobutamine", s:2}, {n:"Dopamine", s:2}, {n:"Epinephrine 1mg", s:20}, {n:"Furosemide 20mg", s:4}, {n:"Haloperidol", s:1}, {n:"Hydrocortisone", s:2}, {n:"Lidocaine Spray", s:1}, {n:"Lidocaine Sol", s:4}, {n:"Magnesium Sulfate", s:1}, {n:"Mannitol 20%", s:1}, {n:"Methylprednisolone", s:1}, {n:"Metoclopramide", s:1}, {n:"Morphine (H.A)", s:1}, {n:"Nitroglycerin", s:2}, {n:"Noradrenaline", s:4}, {n:"Paracetamol IV", s:3}, {n:"Phenobarbital", s:1}, {n:"Phenytoin", s:1}, {n:"Plain LRS 1L", s:1}, {n:"Plain NSS 1L", s:1}, {n:"Potassium Chloride", s:2}, {n:"Sodium Bicarb", s:4}, {n:"Verapamil 5mg", s:1}, {n:"Vitamin B Complex", s:1}, {n:"Insulin syringe", s:10}, {n:"1cc Syringe", s:10}, {n:"3cc Syringe", s:10}, {n:"5cc Syringe", s:10}, {n:"10cc Syringe", s:10}, {n:"20cc Syringe", s:5}, {n:"30cc Syringe", s:2}, {n:"50cc Syringe", s:2}, {n:"Airway Adjuncts", s:1}, {n:"Airway Kit", s:1}, {n:"Alcohol", s:1}, {n:"Aseptic bulb", s:1}, {n:"Calculator", s:1}, {n:"CBG Kit", s:1}, {n:"Cardiac Board", s:1}, {n:"ET Tube 2.5", s:1}, {n:"ET Tube 3.0", s:1}, {n:"ET Tube 3.5", s:1}, {n:"ET Tube 4.0", s:1}, {n:"ET Tube 4.5", s:1}, {n:"ET Tube 5.0", s:1}, {n:"ET Tube 5.5", s:1}, {n:"ET Tube 6.0", s:1}, {n:"ET Tube 6.5", s:1}, {n:"ET Tube 7.0", s:1}, {n:"ET Tube 7.5", s:1}, {n:"ET Tube 8.0", s:1}, {n:"ET Tube 8.5", s:1}, {n:"Foley FR.14", s:1}, {n:"Foley FR.16", s:1}, {n:"Foley FR.18", s:1}, {n:"Urine Bag", s:2}, {n:"Waterproof Apron", s:2}];
 
-    let currentIdx = 0, state = 'none', rec, audioCtx, analyser, dataArray, canvas, ctx;
-
+    let currentIdx = 0, state = 'none', rec, audioCtx, analyser, dataArray;
     const tbody = document.getElementById('audit-body');
+
     inventory.forEach((item, i) => {
         const r = document.createElement('tr'); r.id = `row-${i}`;
-        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td><td><input type="number" id="q-${i}" class="hosp-input" value="${item.s}"></td><td><input type="text" id="e-${i}" class="hosp-input" style="width:70px" placeholder="Date"></td>`;
+        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td>
+        <td><input type="text" id="q-${i}" class="hosp-input" value="${item.s}"></td>
+        <td><input type="text" id="e-${i}" class="hosp-input" style="width:80px" placeholder="---"></td>`;
         tbody.appendChild(r);
     });
 
-    function initVisualizer(stream) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioCtx.createAnalyser();
-        audioCtx.createMediaStreamSource(stream).connect(analyser);
-        analyser.fftSize = 256;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        canvas = document.getElementById('waveform');
-        ctx = canvas.getContext('2d');
-        draw();
-    }
-
-    function draw() {
-        requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        let sum = 0;
-        const barWidth = (canvas.width / dataArray.length) * 2;
-        let x = 0;
-        for(let i = 0; i < dataArray.length; i++) {
-            let barHeight = dataArray[i] / 2;
-            ctx.fillStyle = `rgb(26, 115, 232)`;
-            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
-            sum += dataArray[i];
-        }
-        // Low Volume Warning
-        document.getElementById('vol-warn').style.display = (state !== 'none' && sum < 500) ? 'block' : 'none';
-    }
-
     async function toggleVoice() {
         if (state !== 'none') { location.reload(); return; }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            initVisualizer(stream);
-            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-            rec = new Speech(); rec.continuous = true; rec.interimResults = true;
-            rec.onresult = (e) => {
-                let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
-                document.getElementById('live-transcript').innerText = tr;
-                if(e.results[e.results.length-1].isFinal) handle(tr);
-            };
-            state = 'qty'; document.getElementById('mic-btn').style.background = 'var(--danger)';
-            run(); rec.start();
-        } catch(e) { alert("Mic Access Denied."); }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        initVisualizer(stream);
+        
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        rec = new Speech(); rec.continuous = true; rec.interimResults = true;
+        
+        rec.onresult = (e) => {
+            let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
+            document.getElementById('live-transcript').innerText = tr;
+            
+            // LIVE UPDATE LOGIC
+            const inputQ = document.getElementById(`q-${currentIdx}`);
+            const inputE = document.getElementById(`e-${currentIdx}`);
+
+            if (state === 'qty') {
+                const num = tr.match(/\d+/);
+                if (num) inputQ.value = num[0]; // Real-time fill
+            } else if (state === 'exp') {
+                inputE.value = tr; // Real-time fill
+            }
+
+            if(e.results[e.results.length-1].isFinal) handleFinal(tr);
+        };
+        state = 'qty'; document.getElementById('mic-btn').style.background = 'var(--danger)';
+        run(); rec.start();
     }
 
-    function handle(t) {
-        if (t.includes("go back") || t.includes("undo")) {
-            if (currentIdx > 0) { currentIdx--; state = 'qty'; run(); speak("Back to " + inventory[currentIdx].n); }
-            return;
-        }
+    function handleFinal(t) {
+        if (t.includes("go back")) { currentIdx = Math.max(0, currentIdx-1); state='qty'; run(); return; }
+        
         if (state === 'qty') {
-            const n = t.match(/\d+/);
-            if (n) { document.getElementById(`q-${currentIdx}`).value = n[0]; beep(); state = 'exp'; speak("Expiry?"); }
+            beep(); state = 'exp'; updateModeUI(); speak("Expiry?");
         } else {
-            document.getElementById(`e-${currentIdx}`).value = t; 
             state = 'qty'; currentIdx++; 
-            if (currentIdx < inventory.length) run(); else done();
+            if (currentIdx < inventory.length) { run(); } else { finish(); }
+        }
+    }
+
+    function updateModeUI() {
+        const mode = document.getElementById('active-mode');
+        const qBox = document.getElementById(`q-${currentIdx}`);
+        const eBox = document.getElementById(`e-${currentIdx}`);
+        
+        qBox.classList.remove('listening-qty');
+        eBox.classList.remove('listening-exp');
+
+        if (state === 'qty') {
+            mode.innerText = "SAY QUANTITY"; mode.style.background = 'var(--hosp-blue)';
+            qBox.classList.add('listening-qty');
+        } else {
+            mode.innerText = "SAY EXPIRY"; mode.style.background = 'var(--accent)';
+            eBox.classList.add('listening-exp');
         }
     }
 
     function run() {
+        updateModeUI();
         const item = inventory[currentIdx];
         document.getElementById('current-item').innerText = item.n;
         document.getElementById('audit-progress').innerText = `${currentIdx + 1} / 71`;
         document.querySelectorAll('tr').forEach(r => r.classList.remove('row-focus'));
-        const active = document.getElementById(`row-${currentIdx}`);
-        active.classList.add('row-focus'); active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(`row-${currentIdx}`).classList.add('row-focus');
+        document.getElementById(`row-${currentIdx}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
         speak(item.n);
     }
 
+    function initVisualizer(stream) {
+        audioCtx = new AudioContext(); analyser = audioCtx.createAnalyser();
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const canvas = document.getElementById('waveform'); const ctx = canvas.getContext('2d');
+        function draw() {
+            requestAnimationFrame(draw); analyser.getByteTimeDomainData(dataArray);
+            ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.lineWidth = 2; ctx.strokeStyle = '#1a73e8'; ctx.beginPath();
+            let sliceWidth = canvas.width / dataArray.length; let x = 0;
+            for(let i=0; i<dataArray.length; i++) {
+                let v = dataArray[i]/128.0; let y = v*canvas.height/2;
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); x += sliceWidth;
+            }
+            ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+        }
+        draw();
+    }
+
     function beep() {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.frequency.value = 800; g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        const o = audioCtx.createOscillator(); o.connect(audioCtx.destination);
+        o.frequency.value = 600; o.start(); o.stop(audioCtx.currentTime + 0.1);
     }
 
     function speak(t) { 
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(t); u.rate = 1.2; window.speechSynthesis.speak(u); 
-    }
-
-    function done() { 
-        rec.stop(); state = 'none'; document.getElementById('mic-btn').style.background = 'var(--hosp-blue)';
-        document.getElementById('current-item').innerText = "AUDIT COMPLETE"; speak("Audit complete. Save data."); 
-    }
-
-    async function syncData() {
-        const btn = document.getElementById('mic-btn'); btn.innerText = "⏳";
-        const payload = inventory.map((it, i) => ({
-            name: it.n, stock: it.s, qty: document.getElementById(`q-${i}`).value, exp: document.getElementById(`e-${i}`).value
-        }));
-        try {
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-            alert("✅ Successfully Synced!");
-        } catch (e) { alert("❌ Sync Failed."); }
-        btn.innerText = "🎤";
     }
 </script>
 </body>
