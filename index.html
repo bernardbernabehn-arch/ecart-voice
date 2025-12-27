@@ -3,74 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TDMH | Audit v9</title>
+    <title>TDMH | Complete Audit v11</title>
     <style>
-        :root { --hosp-blue: #1a73e8; --hosp-bg: #f1f3f4; --success: #1e8e3e; --danger: #d93025; --accent: #ff9800; }
+        :root { --hosp-blue: #1a73e8; --hosp-bg: #f8f9fa; --success: #1e8e3e; --danger: #d93025; --accent: #ff9800; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--hosp-bg); margin: 0; overflow: hidden; }
         
-        /* Hospital Header */
-        nav { background: white; border-bottom: 2px solid #ddd; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; }
-        .nav-top { display: flex; justify-content: space-between; align-items: center; }
-        #search-bar { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; outline: none; }
-        #search-bar:focus { border-color: var(--hosp-blue); box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+        nav { background: white; border-bottom: 2px solid #ddd; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Audio Visualizer & Warning */
+        .v-panel { background: #000; margin: 10px; border-radius: 12px; height: 80px; position: relative; border: 2px solid #444; }
+        canvas { width: 100%; height: 100%; border-radius: 10px; }
+        #vol-warn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--danger); font-weight: 900; font-size: 20px; display: none; text-shadow: 0 0 10px black; }
 
-        /* Voice Panel */
-        .voice-monitor { background: white; margin: 10px; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 5px solid var(--hosp-blue); }
+        .info-box { text-align: center; padding: 10px; background: white; border-bottom: 1px solid #ddd; }
         #current-item { font-size: 20px; font-weight: 800; color: var(--hosp-blue); text-transform: uppercase; }
-        #live-transcript { font-size: 15px; color: var(--accent); min-height: 20px; font-style: italic; margin-top: 5px; }
+        #live-transcript { font-size: 14px; color: var(--accent); font-style: italic; margin-top: 4px; height: 18px; }
 
-        /* Table View */
-        .list-viewport { height: calc(100vh - 280px); overflow-y: auto; padding: 0 10px; }
+        /* Table Area */
+        .list-viewport { height: calc(100vh - 300px); overflow-y: auto; padding: 0 10px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
         th { font-size: 10px; text-transform: uppercase; color: #5f6368; padding: 8px; position: sticky; top: 0; background: var(--hosp-bg); z-index: 10; }
-        td { background: white; padding: 10px; text-align: center; font-size: 13px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-        td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; text-align: left; width: 40%; font-weight: 600; }
-        td:last-child { border-right: 1px solid #eee; border-radius: 0 8px 8px 0; }
+        td { background: white; padding: 12px 8px; text-align: center; font-size: 13px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; text-align: left; width: 45%; font-weight: 600; }
         
-        /* States */
-        .row-focus td { background: #e8f0fe !important; border-color: var(--hosp-blue); transform: scale(1.01); }
-        .flash-capture { animation: flash 0.5s; }
-        @keyframes flash { from { background: var(--hosp-blue); color: white; } to { background: white; } }
-        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; background: #ddd; border: 1px solid rgba(0,0,0,0.1); }
+        .row-focus td { background: #e8f0fe !important; border-color: var(--hosp-blue); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 6px; text-align: center; width: 45px; font-size: 13px; }
         
-        .hosp-input { border: 1px solid #dadce0; border-radius: 4px; padding: 5px; text-align: center; width: 45px; font-size: 13px; }
         .fab-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .fab { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.25); font-size: 22px; cursor: pointer; }
-        #mic-btn { background: var(--hosp-blue); }
-        #mic-btn.listening { background: var(--danger); animation: breathe 1.5s infinite; }
-        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        .fab { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 24px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <nav>
-    <div class="nav-top">
-        <div style="font-weight:bold; color:var(--hosp-blue)">TDMH PRO v9</div>
-        <div id="audit-progress" style="font-size:12px; font-weight: 600;">0 / 71</div>
-    </div>
-    <input type="text" id="search-bar" placeholder="🔍 Search medicine..." onkeyup="filterList()">
+    <div style="font-weight:bold; color:var(--hosp-blue)">TDMH PRO AUDIT</div>
+    <div id="audit-progress">0 / 71</div>
 </nav>
 
-<div class="voice-monitor">
+<div class="v-panel">
+    <div id="vol-warn">SPEAK LOUDER!</div>
+    <canvas id="waveform"></canvas>
+</div>
+
+<div class="info-box">
     <div id="current-item">STANDBY</div>
-    <div id="live-transcript">Tap Microphone to begin voice audit</div>
+    <div id="live-transcript">Tap Microphone to begin</div>
 </div>
 
 <div class="list-viewport">
     <table>
-        <thead><tr><th>Medicine</th><th>Req</th><th>Act</th><th>Expiry</th><th>St</th></tr></thead>
+        <thead><tr><th>Medicine</th><th>Req</th><th>Act</th><th>Exp</th></tr></thead>
         <tbody id="audit-body"></tbody>
     </table>
 </div>
 
 <div class="fab-group">
-    <button id="save-btn" class="fab" style="background:var(--success)" onclick="syncData()">💾</button>
-    <button id="mic-btn" class="fab" onclick="toggleVoice()">🎤</button>
+    <button class="fab" style="background:var(--success)" onclick="syncData()">💾</button>
+    <button id="mic-btn" class="fab" style="background:var(--hosp-blue)" onclick="toggleVoice()">🎤</button>
 </div>
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_8o2FlMzny4XUhwcs-oCI8Wnfsyzs3RvvuiTytO8uVGMmqI2AvS9Sy_PeTZ6JBmZt/exec";
     
+    // FULL 71-ITEM LIST
     const inventory = [
         {n:"Adenosine 6mg", s:1}, {n:"Amiodarone 150mg", s:2}, {n:"Anti-tetanus serum", s:1}, {n:"Aspirin 325mg", s:4}, {n:"Atropine 1mg", s:4}, {n:"Salbutamol Inhaler", s:5},
         {n:"Diazepam 10mg", s:2}, {n:"Midazolam 5mg", s:2}, {n:"Calcium Gluconate", s:2}, {n:"Clopidogrel 75mg", s:4}, {n:"D5W 250ml", s:4}, {n:"D50W vial", s:2},
@@ -86,38 +81,59 @@
         {n:"Foley FR.14", s:1}, {n:"Foley FR.16", s:1}, {n:"Foley FR.18", s:1}, {n:"Urine Bag", s:2}, {n:"Waterproof Apron", s:2}
     ];
 
-    let currentIdx = 0, state = 'none', rec;
-    const tbody = document.getElementById('audit-body');
+    let currentIdx = 0, state = 'none', rec, audioCtx, analyser, dataArray, canvas, ctx;
 
+    const tbody = document.getElementById('audit-body');
     inventory.forEach((item, i) => {
         const r = document.createElement('tr'); r.id = `row-${i}`;
-        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td>
-        <td><input type="number" id="q-${i}" class="hosp-input" onchange="color(${i})" value="${item.s}"></td>
-        <td><input type="text" id="e-${i}" class="hosp-input" style="width:70px" placeholder="Date"></td>
-        <td id="s-${i}"><span class="dot"></span></td>`;
+        r.innerHTML = `<td>${item.n}</td><td>${item.s}</td><td><input type="number" id="q-${i}" class="hosp-input" value="${item.s}"></td><td><input type="text" id="e-${i}" class="hosp-input" style="width:70px" placeholder="Date"></td>`;
         tbody.appendChild(r);
     });
 
-    function filterList() {
-        const q = document.getElementById('search-bar').value.toLowerCase();
-        inventory.forEach((item, i) => {
-            document.getElementById(`row-${i}`).style.display = item.n.toLowerCase().includes(q) ? '' : 'none';
-        });
+    function initVisualizer(stream) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        canvas = document.getElementById('waveform');
+        ctx = canvas.getContext('2d');
+        draw();
     }
 
-    function toggleVoice() {
+    function draw() {
+        requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let sum = 0;
+        const barWidth = (canvas.width / dataArray.length) * 2;
+        let x = 0;
+        for(let i = 0; i < dataArray.length; i++) {
+            let barHeight = dataArray[i] / 2;
+            ctx.fillStyle = `rgb(26, 115, 232)`;
+            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+            sum += dataArray[i];
+        }
+        // Low Volume Warning
+        document.getElementById('vol-warn').style.display = (state !== 'none' && sum < 500) ? 'block' : 'none';
+    }
+
+    async function toggleVoice() {
         if (state !== 'none') { location.reload(); return; }
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return alert("Please use Chrome.");
-        
-        rec = new Speech(); rec.continuous = true; rec.interimResults = true;
-        rec.onresult = (e) => {
-            let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
-            document.getElementById('live-transcript').innerText = tr;
-            if(e.results[e.results.length-1].isFinal) handle(tr);
-        };
-        state = 'qty'; document.getElementById('mic-btn').classList.add('listening');
-        run(); rec.start();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            initVisualizer(stream);
+            const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+            rec = new Speech(); rec.continuous = true; rec.interimResults = true;
+            rec.onresult = (e) => {
+                let tr = e.results[e.results.length-1][0].transcript.trim().toLowerCase();
+                document.getElementById('live-transcript').innerText = tr;
+                if(e.results[e.results.length-1].isFinal) handle(tr);
+            };
+            state = 'qty'; document.getElementById('mic-btn').style.background = 'var(--danger)';
+            run(); rec.start();
+        } catch(e) { alert("Mic Access Denied."); }
     }
 
     function handle(t) {
@@ -125,18 +141,13 @@
             if (currentIdx > 0) { currentIdx--; state = 'qty'; run(); speak("Back to " + inventory[currentIdx].n); }
             return;
         }
-
         if (state === 'qty') {
             const n = t.match(/\d+/);
-            if (n) { 
-                const input = document.getElementById(`q-${currentIdx}`);
-                input.value = n[0]; 
-                input.classList.add('flash-capture'); setTimeout(()=>input.classList.remove('flash-capture'), 500);
-                color(currentIdx); state = 'exp'; speak("Expiry?"); 
-            }
+            if (n) { document.getElementById(`q-${currentIdx}`).value = n[0]; beep(); state = 'exp'; speak("Expiry?"); }
         } else {
-            document.getElementById(`e-${currentIdx}`).value = t; state = 'qty';
-            currentIdx++; if (currentIdx < inventory.length) run(); else done();
+            document.getElementById(`e-${currentIdx}`).value = t; 
+            state = 'qty'; currentIdx++; 
+            if (currentIdx < inventory.length) run(); else done();
         }
     }
 
@@ -150,32 +161,34 @@
         speak(item.n);
     }
 
-    function color(i) {
-        const act = document.getElementById(`q-${i}`).value;
-        const c = (act == inventory[i].s) ? '#1e8e3e' : '#d93025';
-        document.getElementById(`s-${i}`).innerHTML = `<span class="dot" style="background:${c}"></span>`;
+    function beep() {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.frequency.value = 800; g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 
     function speak(t) { 
         window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(t); u.rate = 1.1; window.speechSynthesis.speak(u); 
+        const u = new SpeechSynthesisUtterance(t); u.rate = 1.2; window.speechSynthesis.speak(u); 
     }
 
     function done() { 
-        rec.stop(); state = 'none'; document.getElementById('mic-btn').classList.remove('listening');
-        document.getElementById('current-item').innerText = "AUDIT DONE"; speak("Audit complete."); 
+        rec.stop(); state = 'none'; document.getElementById('mic-btn').style.background = 'var(--hosp-blue)';
+        document.getElementById('current-item').innerText = "AUDIT COMPLETE"; speak("Audit complete. Save data."); 
     }
 
     async function syncData() {
-        const btn = document.getElementById('save-btn'); btn.innerText = "⏳";
+        const btn = document.getElementById('mic-btn'); btn.innerText = "⏳";
         const payload = inventory.map((it, i) => ({
             name: it.n, stock: it.s, qty: document.getElementById(`q-${i}`).value, exp: document.getElementById(`e-${i}`).value
         }));
         try {
             await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-            alert("✅ Synced to Sheet!");
-        } catch (e) { alert("❌ Error."); }
-        btn.innerText = "💾";
+            alert("✅ Successfully Synced!");
+        } catch (e) { alert("❌ Sync Failed."); }
+        btn.innerText = "🎤";
     }
 </script>
 </body>
